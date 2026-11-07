@@ -981,6 +981,27 @@
         out += '<path d="' + areaD + '" fill="' + green + '" opacity="0.16"/>';
         out += '<path d="' + lineD + '" fill="none" stroke="' + green + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
 
+        // Label collision bookkeeping: rest badges and each text label
+        // register an approximate box; a label whose preferred spot is
+        // taken flips to the other side of its point instead of drawing
+        // on top of the earlier one (e.g. 目前 vs 最高 at the same point).
+        var placed = [];
+        function labelBox(x, baseY, text, fontSize, anchor) {
+          var w = 6, i;
+          for (i = 0; i < text.length; i++) {
+            w += text.charCodeAt(i) > 255 ? fontSize : fontSize * 0.58;
+          }
+          var x0 = anchor === "end" ? x - w : (anchor === "middle" ? x - w / 2 : x);
+          return { x0: x0, x1: x0 + w, y0: baseY - fontSize - 1, y1: baseY + 3 };
+        }
+        function boxHit(b) {
+          for (var i = 0; i < placed.length; i++) {
+            var p = placed[i];
+            if (b.x0 < p.x1 - 2 && b.x1 > p.x0 + 2 && b.y0 < p.y1 - 2 && b.y1 > p.y0 + 2) return true;
+          }
+          return false;
+        }
+
         // rest badges on top
         var lastBadgeX = -100, badgeRow = 0;
         S.rests.forEach(function (r) {
@@ -989,6 +1010,7 @@
           if (rx - lastBadgeX < 20) badgeRow = (badgeRow + 1) % 2; else badgeRow = 0;
           lastBadgeX = rx;
           var by = m.t + 10 + badgeRow * 20;
+          placed.push({ x0: rx - 9.5, x1: rx + 9.5, y0: by - 9.5, y1: by + 9.5 });
           out += '<circle cx="' + rx.toFixed(1) + '" cy="' + by + '" r="8.5" fill="' + amber + '" stroke="' + surface + '" stroke-width="1.6"/>';
           out += '<text x="' + rx.toFixed(1) + '" y="' + (by + 3.2) + '" font-size="9.5" font-weight="800" fill="#fff" stroke="none" text-anchor="middle">' + r.n + "</text>";
         });
@@ -997,13 +1019,23 @@
         function extreme(pt, label, isMax) {
           var px = X(pt.dist), py = Y(pt.alt);
           var anchor = px > W - 120 ? "end" : (px < 110 ? "start" : "middle");
+          var text = label + " " + Math.round(pt.alt) + " 公尺";
           var ly = isMax ? py - 10 : py + 18;
           if (ly < 12) ly = py + 18;
           if (ly > m.t + plotH - 2) ly = py - 10;
+          var box = labelBox(px, ly, text, 12, anchor);
+          if (boxHit(box)) {
+            var altLy = (ly === py - 10) ? py + 18 : py - 10;
+            if (altLy >= 12 && altLy <= m.t + plotH - 2) {
+              var altBox = labelBox(px, altLy, text, 12, anchor);
+              if (!boxHit(altBox)) { ly = altLy; box = altBox; }
+            }
+          }
+          placed.push(box);
           var s = "";
           s += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="4.4" fill="' + surface + '" stroke="' + green + '" stroke-width="2.4"/>';
           s += '<text x="' + px.toFixed(1) + '" y="' + ly.toFixed(1) + '" font-size="12" font-weight="800" fill="' + ink + '" text-anchor="' + anchor + '">' +
-               label + " " + Math.round(pt.alt) + " 公尺</text>";
+               text + "</text>";
           return s;
         }
         if (maxPt && minPt && maxPt !== minPt) {
@@ -1014,8 +1046,19 @@
         }
         // current position
         var lastP = altPts[altPts.length - 1];
-        out += '<circle cx="' + X(lastP.dist).toFixed(1) + '" cy="' + Y(lastP.alt).toFixed(1) + '" r="5.4" fill="' + amber + '" stroke="' + surface + '" stroke-width="2.2"/>';
-        out += '<text x="' + X(lastP.dist).toFixed(1) + '" y="' + (Y(lastP.alt) - 11).toFixed(1) + '" font-size="11.5" font-weight="700" fill="' + ink + '" text-anchor="end">目前 ' + Math.round(lastP.alt) + " 公尺</text>";
+        var cpx = X(lastP.dist), cpy = Y(lastP.alt);
+        var curText = "目前 " + Math.round(lastP.alt) + " 公尺";
+        var cly = cpy - 11;
+        if (boxHit(labelBox(cpx, cly, curText, 11.5, "end"))) {
+          var belowLy = cpy + 19;
+          if (belowLy <= m.t + plotH + 4 &&
+              !boxHit(labelBox(cpx, belowLy, curText, 11.5, "end"))) {
+            cly = belowLy;
+          }
+        }
+        placed.push(labelBox(cpx, cly, curText, 11.5, "end"));
+        out += '<circle cx="' + cpx.toFixed(1) + '" cy="' + cpy.toFixed(1) + '" r="5.4" fill="' + amber + '" stroke="' + surface + '" stroke-width="2.2"/>';
+        out += '<text x="' + cpx.toFixed(1) + '" y="' + cly.toFixed(1) + '" font-size="11.5" font-weight="700" fill="' + ink + '" text-anchor="end">' + curText + "</text>";
 
         svg.innerHTML = out;
         $("profileMeta").textContent = "最高 " + Math.round(maxA) + " m · 最低 " + Math.round(minA) +
