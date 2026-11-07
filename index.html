@@ -1,0 +1,1225 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>健行記錄器</title>
+    <style>
+      :root{
+        --bg:#f3f5ee;
+        --surface:#ffffff;
+        --surface-2:#edf1e6;
+        --ink:#1d2a1f;
+        --muted:#5d6d5f;
+        --line:#dbe3d2;
+        --green:#2e7d46;
+        --green-strong:#226638;
+        --green-soft:#e1efe0;
+        --amber:#d97e06;
+        --amber-strong:#b96a00;
+        --amber-soft:#fdf0d7;
+        --red:#bc3a2c;
+        --red-soft:#fbe9e6;
+        --shadow:0 1px 3px rgba(29,42,31,.09), 0 4px 14px rgba(29,42,31,.05);
+        color-scheme:light;
+      }
+      @media (prefers-color-scheme: dark){
+        :root{
+          --bg:#0e140e;
+          --surface:#182118;
+          --surface-2:#1f2b1f;
+          --ink:#eaf3e7;
+          --muted:#a2b6a4;
+          --line:#2d3d2d;
+          --green:#66c281;
+          --green-strong:#7fd096;
+          --green-soft:#20351f;
+          --amber:#f0a83e;
+          --amber-strong:#f5bc63;
+          --amber-soft:#3a2c11;
+          --red:#e4705f;
+          --red-soft:#3c201b;
+          --shadow:0 1px 3px rgba(0,0,0,.4);
+          color-scheme:dark;
+        }
+      }
+      *{ box-sizing:border-box; }
+      [hidden]{ display:none !important; }
+      html{ -webkit-text-size-adjust:100%; }
+      body{
+        margin:0;
+        background:var(--bg);
+        color:var(--ink);
+        font-family:"PingFang TC","PingFang SC","Microsoft JhengHei","Noto Sans TC",system-ui,-apple-system,"Segoe UI",sans-serif;
+        line-height:1.55;
+      }
+      .wrap{ max-width:1060px; margin:0 auto; padding:14px 14px 40px; }
+      .num{ font-variant-numeric:tabular-nums; }
+
+      /* ---------- panels ---------- */
+      .panel{
+        background:var(--surface);
+        border:1px solid var(--line);
+        border-radius:14px;
+        box-shadow:var(--shadow);
+        padding:16px;
+        margin-bottom:14px;
+      }
+      .panel-head{
+        display:flex; align-items:baseline; justify-content:space-between; gap:10px;
+        margin-bottom:10px;
+      }
+      .panel-head h2{ font-size:17px; margin:0; letter-spacing:.02em; }
+      .panel-meta{ font-size:12.5px; color:var(--muted); text-align:right; }
+
+      /* ---------- hero / status ---------- */
+      .sim-banner{
+        background:var(--amber-soft);
+        border:1px solid var(--amber);
+        color:var(--ink);
+        border-radius:12px;
+        padding:10px 14px;
+        margin-bottom:14px;
+        font-size:14px;
+        display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:space-between;
+      }
+      .hero-top{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; }
+      .pill{
+        display:inline-flex; align-items:center; gap:7px;
+        font-size:13px; font-weight:700;
+        padding:4px 12px; border-radius:999px;
+        background:var(--surface-2); color:var(--muted);
+        border:1px solid var(--line);
+        white-space:nowrap;
+      }
+      .pill .dot{ width:9px; height:9px; border-radius:50%; background:var(--muted); flex:none; }
+      .pill-rec{ background:var(--green-soft); color:var(--green-strong); border-color:var(--green); }
+      .pill-rec .dot{ background:var(--green); animation:blink 1.6s ease-in-out infinite; }
+      .pill-pause{ background:var(--amber-soft); color:var(--amber-strong); border-color:var(--amber); }
+      .pill-pause .dot{ background:var(--amber); }
+      .pill-done{ background:var(--surface-2); color:var(--ink); }
+      @keyframes blink{ 0%,100%{opacity:1} 50%{opacity:.25} }
+      .gps-text{ font-size:13px; color:var(--muted); }
+      .elapsed{
+        font-size:56px; font-weight:800; line-height:1.05; letter-spacing:.01em;
+        margin:10px 0 2px;
+      }
+      .hero-sub{
+        display:flex; flex-wrap:wrap; gap:4px 16px;
+        font-size:13.5px; color:var(--muted); margin-bottom:14px;
+      }
+      .controls{ display:flex; flex-wrap:wrap; gap:10px; }
+      .err{
+        margin:12px 0 0; padding:10px 12px;
+        background:var(--red-soft); color:var(--red);
+        border:1px solid var(--red); border-radius:10px; font-size:14px;
+      }
+      .sim-row{ margin-top:12px; }
+
+      /* ---------- buttons ---------- */
+      .btn{
+        appearance:none; border:1px solid var(--line);
+        background:var(--surface); color:var(--ink);
+        font:inherit; font-weight:700; font-size:15px;
+        padding:11px 18px; border-radius:12px; cursor:pointer;
+        min-height:48px;
+        display:inline-flex; align-items:center; justify-content:center; gap:8px;
+        touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+      }
+      .btn:active{ transform:translateY(1px); }
+      .btn:disabled{ opacity:.45; cursor:not-allowed; }
+      .btn-primary{ background:var(--green); border-color:var(--green); color:#fff; }
+      @media (prefers-color-scheme: dark){ .btn-primary{ color:#0e140e; } }
+      .btn-big{ font-size:18px; padding:14px 28px; min-height:56px; flex:1 1 200px; }
+      .btn-danger{ background:var(--surface); border-color:var(--red); color:var(--red); }
+      .btn-amber{ background:var(--amber); border-color:var(--amber); color:#fff; }
+      @media (prefers-color-scheme: dark){ .btn-amber{ color:#201503; } }
+      .btn-link{
+        background:none; border:none; color:var(--green-strong);
+        text-decoration:underline; text-underline-offset:3px;
+        min-height:40px; padding:6px 4px; font-size:14px; font-weight:600;
+      }
+
+      /* ---------- stats ---------- */
+      .stat-grid{
+        display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:14px;
+      }
+      @media (min-width:640px){ .stat-grid{ grid-template-columns:repeat(4,1fr); } }
+      .stat{
+        background:var(--surface); border:1px solid var(--line); border-radius:12px;
+        box-shadow:var(--shadow); padding:12px 14px;
+      }
+      .stat .label{ font-size:12.5px; color:var(--muted); margin-bottom:2px; }
+      .stat .value{ font-size:26px; font-weight:800; line-height:1.15; }
+      .stat .value small{ font-size:14px; font-weight:600; color:var(--muted); margin-left:2px; }
+      .stat.hero-stat .value{ font-size:32px; color:var(--green-strong); }
+
+      /* ---------- charts ---------- */
+      .charts{ display:grid; grid-template-columns:1fr; gap:14px; margin-bottom:14px; }
+      .charts .panel{ margin-bottom:0; }
+      @media (min-width:920px){
+        .charts{ grid-template-columns:5fr 7fr; }
+      }
+      .chart-wrap{ position:relative; width:100%; }
+      .chart-wrap svg{ display:block; width:100%; }
+      .chart-wrap svg text{
+        font-family:inherit;
+        paint-order:stroke; stroke:var(--surface); stroke-width:3px; stroke-linejoin:round;
+      }
+      .chart-empty{
+        position:absolute; inset:0;
+        display:flex; align-items:center; justify-content:center; text-align:center;
+        color:var(--muted); font-size:14px; padding:20px;
+        border:1.5px dashed var(--line); border-radius:10px;
+        background:var(--surface-2);
+      }
+      .chart-foot{
+        display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center;
+        margin-top:10px; font-size:13px; color:var(--muted);
+      }
+      .chart-foot a{ color:var(--green-strong); font-weight:600; }
+      .legend{ display:flex; flex-wrap:wrap; gap:4px 16px; }
+      .legend span{ display:inline-flex; align-items:center; gap:6px; }
+      .swatch{ width:18px; height:0; border-top:3px solid var(--green); border-radius:2px; display:inline-block; }
+      .swatch.dash{ border-top:3px dashed var(--amber); }
+      .swatch.dotg{ width:10px; height:10px; border-radius:50%; background:var(--green); border:2px solid var(--surface); box-shadow:0 0 0 1px var(--green); }
+      .swatch.dota{ width:10px; height:10px; border-radius:50%; background:var(--amber); border:2px solid var(--surface); box-shadow:0 0 0 1px var(--amber); }
+      .pulse-ring{
+        transform-box:fill-box; transform-origin:center;
+        animation:pulse 1.8s ease-out infinite;
+      }
+      @keyframes pulse{ 0%{ transform:scale(.45); opacity:.75; } 100%{ transform:scale(2.4); opacity:0; } }
+      @media (prefers-reduced-motion: reduce){
+        .pulse-ring{ animation:none; opacity:0; }
+        .pill-rec .dot{ animation:none; }
+      }
+
+      /* ---------- rest list ---------- */
+      .rest-list{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+      @media (min-width:720px){ .rest-list{ grid-template-columns:1fr 1fr; } }
+      .rest-item{
+        display:flex; gap:12px; align-items:flex-start;
+        border:1px solid var(--line); border-radius:12px; padding:12px 14px;
+        background:var(--surface-2);
+      }
+      .rest-badge{
+        flex:none; width:40px; height:40px; border-radius:50%;
+        background:var(--amber); color:#fff;
+        display:flex; align-items:center; justify-content:center;
+        font-size:18px; font-weight:800;
+      }
+      @media (prefers-color-scheme: dark){ .rest-badge{ color:#201503; } }
+      .rest-item .r-title{ font-weight:800; font-size:16px; }
+      .rest-item .r-rows{ font-size:13.5px; color:var(--muted); display:grid; gap:1px; margin-top:2px; }
+      .rest-item .r-rows b{ color:var(--ink); font-weight:700; }
+      .rest-empty{ color:var(--muted); font-size:14px; margin:4px 0 2px; }
+
+      /* ---------- export / tips ---------- */
+      .export-btns{ display:flex; flex-wrap:wrap; gap:10px; }
+      .export-note{ font-size:13px; color:var(--muted); margin:12px 0 0; }
+      .summary-box{
+        background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+        padding:12px 14px; font-size:14.5px; margin-bottom:14px; white-space:pre-line;
+      }
+      .tips{ font-size:13.5px; color:var(--muted); padding:2px 6px 0; }
+      .tips h3{ font-size:14px; color:var(--ink); margin:0 0 6px; }
+      .tips ul{ margin:0; padding-left:20px; display:grid; gap:3px; }
+
+      /* ---------- sticky action bar ---------- */
+      .actionbar{
+        position:fixed; left:0; right:0; bottom:0; z-index:30;
+        background:var(--surface);
+        border-top:1px solid var(--line);
+        box-shadow:0 -4px 18px rgba(20,30,20,.12);
+        padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+        display:flex; gap:10px; align-items:stretch;
+        max-width:1060px; margin:0 auto;
+      }
+      .actionbar .btn-rest{ flex:1 1 auto; font-size:18px; min-height:58px; border-radius:14px; }
+      .actionbar .btn{ min-height:58px; }
+      body.has-actionbar{ padding-bottom:92px; }
+
+      .toast{
+        position:fixed; left:50%; bottom:110px; transform:translateX(-50%);
+        background:var(--ink); color:var(--bg);
+        font-size:15px; font-weight:700;
+        padding:11px 20px; border-radius:999px; z-index:40;
+        box-shadow:0 6px 24px rgba(0,0,0,.25);
+        max-width:88vw; text-align:center;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="wrap">
+
+      <div id="simBanner" class="sim-banner" hidden>
+        <span>目前是<b>模擬模式</b>：路線與高度是測試用假資料，不是真實 GPS。</span>
+        <button id="btnEndSim" class="btn" type="button">結束模擬</button>
+      </div>
+
+      <!-- 狀態與時間 -->
+      <section class="panel" aria-label="記錄狀態">
+        <div class="hero-top">
+          <span id="statusPill" class="pill"><span class="dot"></span><span id="statusText">尚未開始</span></span>
+          <span id="gpsText" class="gps-text">按下「開始健行」後，頁面會請求使用定位</span>
+        </div>
+        <div id="elapsed" class="elapsed num">00:00:00</div>
+        <div class="hero-sub">
+          <span>經過時間（不含暫停）</span>
+          <span id="startInfo"></span>
+          <span id="clockNow" class="num"></span>
+        </div>
+        <div class="controls">
+          <button id="btnStart" class="btn btn-primary btn-big" type="button">開始健行</button>
+          <button id="btnPause" class="btn" type="button" hidden>暫停</button>
+          <button id="btnResume" class="btn btn-primary" type="button" hidden>繼續</button>
+          <button id="btnFinish" class="btn btn-danger" type="button" hidden>結束並看摘要</button>
+          <button id="btnNew" class="btn btn-primary btn-big" type="button" hidden>開始新的健行</button>
+        </div>
+        <p id="errBox" class="err" hidden></p>
+        <div class="sim-row" id="simRow">
+          <button id="btnSim" class="btn-link" type="button">還沒出門？先用模擬路線試用各項功能</button>
+        </div>
+      </section>
+
+      <!-- 即時數據 -->
+      <section class="stat-grid" aria-label="即時數據">
+        <div class="stat hero-stat"><div class="label">累積距離</div><div class="value num"><span id="stDist">0.00</span><small>km</small></div></div>
+        <div class="stat hero-stat"><div class="label">目前海拔</div><div class="value num"><span id="stAlt">—</span><small>m</small></div></div>
+        <div class="stat"><div class="label">累積爬升</div><div class="value num"><span id="stAscent">0</span><small>m</small></div></div>
+        <div class="stat"><div class="label">累積下降</div><div class="value num"><span id="stDescent">0</span><small>m</small></div></div>
+        <div class="stat"><div class="label">最高海拔</div><div class="value num"><span id="stMax">—</span><small>m</small></div></div>
+        <div class="stat"><div class="label">最低海拔</div><div class="value num"><span id="stMin">—</span><small>m</small></div></div>
+        <div class="stat"><div class="label">目前速度</div><div class="value num"><span id="stSpeed">0.0</span><small>km/h</small></div></div>
+        <div class="stat"><div class="label">平均速度</div><div class="value num"><span id="stAvg">0.0</span><small>km/h</small></div></div>
+      </section>
+
+      <!-- 兩張主圖 -->
+      <div class="charts">
+        <section class="panel" aria-label="路線圖">
+          <div class="panel-head">
+            <h2>路線圖</h2>
+            <span class="panel-meta" id="routeMeta"></span>
+          </div>
+          <div class="chart-wrap" id="routeWrap">
+            <svg id="routeSvg" role="img" aria-label="GPS 軌跡路線圖"></svg>
+            <div class="chart-empty" id="routeEmpty">開始記錄後，你走過的路線會即時畫在這裡<br />（綠點＝起點，橘點＝目前位置）</div>
+          </div>
+          <div class="chart-foot">
+            <span id="coordText">尚無定位</span>
+            <a id="gmapsLink" href="#" target="_blank" rel="noopener" hidden>在 Google Maps 查看目前位置</a>
+          </div>
+        </section>
+
+        <section class="panel" aria-label="高度圖">
+          <div class="panel-head">
+            <h2>高度圖</h2>
+            <span class="panel-meta" id="profileMeta">橫軸：累積距離 · 縱軸：海拔</span>
+          </div>
+          <div class="chart-wrap" id="profileWrap">
+            <svg id="profileSvg" role="img" aria-label="海拔高度剖面圖"></svg>
+            <div class="chart-empty" id="profileEmpty">開始記錄後，海拔隨距離的變化會即時畫在這裡<br />並標出最高點、最低點與目前位置</div>
+          </div>
+          <div class="chart-foot legend">
+            <span><i class="swatch"></i>海拔剖面</span>
+            <span><i class="swatch dotg"></i>最高／最低點</span>
+            <span><i class="swatch dash"></i>休息點</span>
+            <span><i class="swatch dota"></i>目前位置</span>
+          </div>
+        </section>
+      </div>
+
+      <!-- 休息點 -->
+      <section class="panel" aria-label="休息點清單">
+        <div class="panel-head">
+          <h2>休息點</h2>
+          <span class="panel-meta" id="restCount">共 0 個</span>
+        </div>
+        <p class="rest-empty" id="restEmpty">還沒有休息點。休息時按下方的「＋ 記錄休息點」，就會把當下的時間與累積距離記下來，也會標在路線圖與高度圖上。</p>
+        <ol class="rest-list" id="restList"></ol>
+      </section>
+
+      <!-- 摘要與匯出 -->
+      <section class="panel" id="exportPanel" aria-label="摘要與匯出">
+        <div class="panel-head">
+          <h2>行程摘要與匯出</h2>
+          <span class="panel-meta" id="pointCount">已記錄 0 個軌跡點</span>
+        </div>
+        <div class="summary-box" id="summaryBox">尚未開始記錄。</div>
+        <div class="export-btns">
+          <button id="btnGpx" class="btn" type="button" disabled>下載 GPX 路線檔</button>
+          <button id="btnCsv" class="btn" type="button" disabled>下載 CSV 明細</button>
+          <button id="btnCopy" class="btn" type="button" disabled>複製文字摘要</button>
+        </div>
+        <p class="export-note">GPX 可匯入其他登山／地圖 App 查看路線；記錄只保留在目前這個頁面，下載後再關閉頁面才不會遺失。</p>
+      </section>
+
+      <div class="tips">
+        <h3>使用小提示</h3>
+        <ul>
+          <li>開始時請允許此頁面使用定位，並把手機放在口袋外側或背包上層，GPS 訊號會比較穩。</li>
+          <li>記錄中請保持此頁面開啟；切換到其他 App 或鎖定螢幕時，部分手機會暫停定位更新。</li>
+          <li>海拔來自手機 GPS，誤差通常在 ±10～30 公尺之間，爬升／下降已做平滑處理，適合看整體趨勢。</li>
+        </ul>
+      </div>
+    </main>
+
+    <!-- 記錄中的固定操作列 -->
+    <div class="actionbar" id="actionBar" hidden>
+      <button id="btnRest" class="btn btn-amber btn-rest" type="button">＋ 記錄休息點</button>
+      <button id="btnPause2" class="btn" type="button">暫停</button>
+      <button id="btnFinish2" class="btn btn-danger" type="button">結束</button>
+    </div>
+
+    <div class="toast num" id="toast" hidden></div>
+
+    <script>
+      "use strict";
+      var $ = function (id) { return document.getElementById(id); };
+
+      /* ---------------- state ---------------- */
+      var S = {
+        status: "idle",           // idle | recording | paused | finished
+        sim: false,
+        watchId: null,
+        simTimer: null,
+        points: [],               // {t, lat, lng, alt(smoothed|null), dist}
+        rests: [],                // {n, t, elapsedMs, dist, alt, lat, lng}
+        totalDist: 0,
+        ascent: 0,
+        descent: 0,
+        refAlt: null,             // hysteresis reference for ascent/descent
+        altWindow: [],            // recent raw altitudes for smoothing
+        maxAlt: null,
+        minAlt: null,
+        startTs: null,
+        accumulatedMs: 0,
+        segmentStart: null,
+        currentFix: null,         // latest GPS fix (even if not recorded)
+        lastSpeed: 0,
+        wakeLock: null,
+        chartTimer: null,
+        simState: null
+      };
+
+      /* ---------------- formatting ---------------- */
+      function pad2(n) { return (n < 10 ? "0" : "") + n; }
+      function fmtHMS(ms) {
+        if (ms == null || isNaN(ms)) ms = 0;
+        var s = Math.floor(ms / 1000);
+        var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), ss = s % 60;
+        return pad2(h) + ":" + pad2(m) + ":" + pad2(ss);
+      }
+      function fmtClock(t) {
+        var d = new Date(t);
+        return pad2(d.getHours()) + ":" + pad2(d.getMinutes()) + ":" + pad2(d.getSeconds());
+      }
+      function fmtClockHM(t) {
+        var d = new Date(t);
+        return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
+      }
+      function fmtNum(v, dec) { return v == null ? "—" : v.toFixed(dec); }
+      function fmtInt(v) { return v == null ? "—" : String(Math.round(v)); }
+      function elapsedMs() {
+        var base = S.accumulatedMs;
+        if (S.status === "recording" && S.segmentStart) base += Date.now() - S.segmentStart;
+        return base;
+      }
+      function escXml(s) {
+        return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      }
+      function cssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      }
+
+      /* ---------------- geo math ---------------- */
+      function haversine(lat1, lng1, lat2, lng2) {
+        var R = 6371000, rad = Math.PI / 180;
+        var dLat = (lat2 - lat1) * rad, dLng = (lng2 - lng1) * rad;
+        var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * rad) * Math.cos(lat2 * rad) *
+                Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+      }
+      function sample(arr, max) {
+        if (arr.length <= max) return arr.slice();
+        var out = [], step = arr.length / max, i;
+        for (i = 0; i < arr.length; i += step) out.push(arr[Math.floor(i)]);
+        if (out[out.length - 1] !== arr[arr.length - 1]) out.push(arr[arr.length - 1]);
+        return out;
+      }
+      function niceStep(raw) {
+        if (!(raw > 0)) return 1;
+        var p = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / p;
+        if (n < 1.5) return p;
+        if (n < 3.5) return 2 * p;
+        if (n < 7.5) return 5 * p;
+        return 10 * p;
+      }
+
+      /* ---------------- toast ---------------- */
+      var toastTimer = null;
+      function toast(msg) {
+        var el = $("toast");
+        el.textContent = msg;
+        el.hidden = false;
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { el.hidden = true; }, 2200);
+      }
+
+      /* ---------------- wake lock ---------------- */
+      function requestWakeLock() {
+        try {
+          if (navigator.wakeLock && navigator.wakeLock.request) {
+            navigator.wakeLock.request("screen").then(function (wl) { S.wakeLock = wl; }).catch(function () {});
+          }
+        } catch (e) { /* not supported: ignore */ }
+      }
+      function releaseWakeLock() {
+        try { if (S.wakeLock) { S.wakeLock.release(); S.wakeLock = null; } } catch (e) {}
+      }
+
+      /* ---------------- recording core ---------------- */
+      function processFix(fix) {
+        var c = fix.coords;
+        var lat = c.latitude, lng = c.longitude;
+        var rawAlt = (typeof c.altitude === "number" && isFinite(c.altitude)) ? c.altitude : null;
+        var acc = (typeof c.accuracy === "number") ? c.accuracy : null;
+        var t = fix.timestamp || Date.now();
+        S.currentFix = { lat: lat, lng: lng, alt: rawAlt, acc: acc, t: t };
+
+        if (acc != null && acc > 65) {
+          setGpsText("GPS 精度較差（±" + Math.round(acc) + " 公尺），移動到空曠處會更準");
+        } else if (acc != null) {
+          setGpsText("GPS 定位中 · 精度 ±" + Math.round(acc) + " 公尺");
+        }
+        updateCoordLine();
+
+        if (S.status !== "recording") { scheduleCharts(); return; }
+
+        var last = S.points.length ? S.points[S.points.length - 1] : null;
+        var d = last ? haversine(last.lat, last.lng, lat, lng) : 0;
+        if (last && d < 3 && (t - last.t) < 20000) {
+          // jitter / standing still: don't record, but keep speed fresh
+          S.lastSpeed = 0;
+          updateStats();
+          return;
+        }
+        if (acc != null && acc > 65) return; // too imprecise to record
+        if (last) S.totalDist += d;
+
+        // altitude smoothing (mean of last <=3 raw readings)
+        var smoothed = null;
+        if (rawAlt != null) {
+          S.altWindow.push(rawAlt);
+          if (S.altWindow.length > 3) S.altWindow.shift();
+          var sum = 0, i;
+          for (i = 0; i < S.altWindow.length; i++) sum += S.altWindow[i];
+          smoothed = sum / S.altWindow.length;
+          if (S.refAlt == null) {
+            S.refAlt = smoothed;
+          } else if (smoothed - S.refAlt >= 1) {
+            S.ascent += smoothed - S.refAlt; S.refAlt = smoothed;
+          } else if (S.refAlt - smoothed >= 1) {
+            S.descent += S.refAlt - smoothed; S.refAlt = smoothed;
+          }
+          if (S.maxAlt == null || smoothed > S.maxAlt) S.maxAlt = smoothed;
+          if (S.minAlt == null || smoothed < S.minAlt) S.minAlt = smoothed;
+        }
+
+        if (typeof c.speed === "number" && isFinite(c.speed) && c.speed >= 0) {
+          S.lastSpeed = c.speed * 3.6;
+        } else if (last && t > last.t) {
+          S.lastSpeed = d / ((t - last.t) / 1000) * 3.6;
+        }
+
+        S.points.push({ t: t, lat: lat, lng: lng, alt: smoothed, dist: S.totalDist });
+        updateStats();
+        updateSummary();
+        scheduleCharts();
+      }
+
+      function geoError(err) {
+        if (S.status !== "recording" && S.status !== "paused") return;
+        if (err && err.code === 1) {
+          showError("無法取得定位：瀏覽器拒絕了定位授權。請在瀏覽器設定中允許此頁面使用定位，再重新開始。");
+          stopWatch();
+          setStatusUI("idle");
+          S.status = "idle";
+        } else {
+          setGpsText("GPS 訊號不穩，正在重試…（請到空曠處，避開遮蔽）");
+        }
+      }
+
+      function startWatch() {
+        if (!("geolocation" in navigator)) {
+          showError("此瀏覽器不支援定位功能，請改用手機上的 Chrome 或 Safari 開啟此頁面。");
+          return false;
+        }
+        S.watchId = navigator.geolocation.watchPosition(processFix, geoError, {
+          enableHighAccuracy: true, maximumAge: 1000, timeout: 20000
+        });
+        return true;
+      }
+      function stopWatch() {
+        if (S.watchId != null && "geolocation" in navigator) {
+          navigator.geolocation.clearWatch(S.watchId);
+        }
+        S.watchId = null;
+      }
+
+      function resetData() {
+        S.points = []; S.rests = [];
+        S.totalDist = 0; S.ascent = 0; S.descent = 0;
+        S.refAlt = null; S.altWindow = [];
+        S.maxAlt = null; S.minAlt = null;
+        S.startTs = null; S.accumulatedMs = 0; S.segmentStart = null;
+        S.currentFix = null; S.lastSpeed = 0;
+      }
+
+      function startRecording() {
+        hideError();
+        resetData();
+        renderRests();
+        if (!startWatch()) { setStatusUI("idle"); return; }
+        S.status = "recording";
+        S.startTs = Date.now();
+        S.segmentStart = Date.now();
+        S.accumulatedMs = 0;
+        setStatusUI("recording");
+        setGpsText("正在取得 GPS 定位…");
+        requestWakeLock();
+        updateStats(); updateSummary(); scheduleCharts();
+      }
+
+      function pauseRecording() {
+        if (S.status !== "recording") return;
+        S.accumulatedMs += Date.now() - S.segmentStart;
+        S.segmentStart = null;
+        S.status = "paused";
+        S.lastSpeed = 0;
+        setStatusUI("paused");
+        releaseWakeLock();
+        updateStats();
+      }
+
+      function resumeRecording() {
+        if (S.status !== "paused") return;
+        S.segmentStart = Date.now();
+        S.status = "recording";
+        setStatusUI("recording");
+        requestWakeLock();
+      }
+
+      function finishRecording() {
+        if (S.status === "recording") {
+          S.accumulatedMs += Date.now() - S.segmentStart;
+          S.segmentStart = null;
+        }
+        S.status = "finished";
+        S.lastSpeed = 0;
+        stopWatch();
+        stopSim();
+        releaseWakeLock();
+        setStatusUI("finished");
+        updateStats(); updateSummary(); scheduleCharts();
+        var el = $("exportPanel");
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+        toast("記錄完成，記得下載保存");
+      }
+
+      /* ---------------- UI state ---------------- */
+      function setGpsText(txt) { $("gpsText").textContent = txt; }
+      function showError(txt) { var e = $("errBox"); e.textContent = txt; e.hidden = false; }
+      function hideError() { $("errBox").hidden = true; }
+
+      function setStatusUI(st) {
+        var pill = $("statusPill"), txt = $("statusText");
+        pill.className = "pill";
+        if (st === "recording") {
+          pill.classList.add("pill-rec");
+          txt.textContent = S.sim ? "模擬記錄中" : "記錄中";
+        } else if (st === "paused") {
+          pill.classList.add("pill-pause");
+          txt.textContent = "已暫停";
+        } else if (st === "finished") {
+          pill.classList.add("pill-done");
+          txt.textContent = "已結束";
+          setGpsText("這趟健行已結束，摘要與匯出在下方");
+        } else {
+          txt.textContent = "尚未開始";
+        }
+        var active = (st === "recording" || st === "paused");
+        $("btnStart").hidden = st !== "idle";
+        $("btnPause").hidden = st !== "recording";
+        $("btnResume").hidden = st !== "paused";
+        $("btnFinish").hidden = !active;
+        $("btnNew").hidden = st !== "finished";
+        $("btnNew").textContent = "開始新的健行";
+        $("btnNew").dataset.armed = "";
+        $("simRow").hidden = st !== "idle";
+        $("actionBar").hidden = !active;
+        document.body.classList.toggle("has-actionbar", active);
+        $("btnPause2").textContent = st === "paused" ? "繼續" : "暫停";
+        if (S.startTs) {
+          $("startInfo").textContent = "開始於 " + fmtClockHM(S.startTs);
+        } else {
+          $("startInfo").textContent = "";
+        }
+      }
+
+      function updateCoordLine() {
+        var f = S.currentFix;
+        if (!f) { $("coordText").textContent = "尚無定位"; $("gmapsLink").hidden = true; return; }
+        var txt = "目前座標 " + f.lat.toFixed(5) + ", " + f.lng.toFixed(5);
+        if (f.acc != null) txt += " · 精度 ±" + Math.round(f.acc) + " 公尺";
+        $("coordText").textContent = txt;
+        var a = $("gmapsLink");
+        a.href = "https://www.google.com/maps/search/?api=1&query=" +
+                 encodeURIComponent(f.lat + "," + f.lng);
+        a.hidden = false;
+      }
+
+      function lastAlt() {
+        for (var i = S.points.length - 1; i >= 0; i--) {
+          if (S.points[i].alt != null) return S.points[i].alt;
+        }
+        return null;
+      }
+
+      function updateStats() {
+        $("stDist").textContent = (S.totalDist / 1000).toFixed(2);
+        $("stAlt").textContent = fmtInt(lastAlt());
+        $("stAscent").textContent = fmtInt(S.ascent);
+        $("stDescent").textContent = fmtInt(S.descent);
+        $("stMax").textContent = fmtInt(S.maxAlt);
+        $("stMin").textContent = fmtInt(S.minAlt);
+        var moving = S.status === "recording";
+        $("stSpeed").textContent = moving ? fmtNum(S.lastSpeed, 1) : "0.0";
+        var el = elapsedMs();
+        var avg = el > 5000 ? (S.totalDist / 1000) / (el / 3600000) : 0;
+        $("stAvg").textContent = fmtNum(avg, 1);
+        $("pointCount").textContent = "已記錄 " + S.points.length + " 個軌跡點";
+        var has = S.points.length > 0;
+        $("btnGpx").disabled = !has;
+        $("btnCsv").disabled = !has;
+        $("btnCopy").disabled = !has;
+      }
+
+      function summaryText() {
+        if (!S.startTs) return "尚未開始記錄。";
+        var lines = [];
+        lines.push("健行日期：" + new Date(S.startTs).getFullYear() + "/" +
+                   (new Date(S.startTs).getMonth() + 1) + "/" + new Date(S.startTs).getDate() +
+                   " " + fmtClockHM(S.startTs) + " 出發");
+        lines.push("經過時間：" + fmtHMS(elapsedMs()) + "（不含暫停）");
+        lines.push("總距離：" + (S.totalDist / 1000).toFixed(2) + " km");
+        lines.push("累積爬升：" + Math.round(S.ascent) + " m · 累積下降：" + Math.round(S.descent) + " m");
+        lines.push("海拔：最高 " + fmtInt(S.maxAlt) + " m · 最低 " + fmtInt(S.minAlt) + " m");
+        if (S.rests.length) {
+          lines.push("休息點共 " + S.rests.length + " 個：");
+          S.rests.forEach(function (r) {
+            lines.push("  " + r.n + ". " + fmtClock(r.t) + "（已健行 " + fmtHMS(r.elapsedMs) +
+                       "）· 距離 " + (r.dist / 1000).toFixed(2) + " km · 海拔 " + fmtInt(r.alt) + " m");
+          });
+        }
+        return lines.join("\n");
+      }
+      function updateSummary() { $("summaryBox").textContent = summaryText(); }
+
+      /* ---------------- rest points ---------------- */
+      function addRest() {
+        if (S.status !== "recording" && S.status !== "paused") return;
+        var now = Date.now();
+        var f = S.currentFix;
+        var last = S.points.length ? S.points[S.points.length - 1] : null;
+        var r = {
+          n: S.rests.length + 1,
+          t: now,
+          elapsedMs: elapsedMs(),
+          dist: S.totalDist,
+          alt: lastAlt(),
+          lat: last ? last.lat : (f ? f.lat : null),
+          lng: last ? last.lng : (f ? f.lng : null)
+        };
+        S.rests.push(r);
+        renderRests();
+        updateSummary();
+        scheduleCharts();
+        toast("已記錄休息點 " + r.n + " · " + fmtClock(now) + " · " + (r.dist / 1000).toFixed(2) + " km");
+      }
+
+      function renderRests() {
+        var list = $("restList");
+        list.innerHTML = "";
+        $("restEmpty").style.display = S.rests.length ? "none" : "";
+        $("restCount").textContent = "共 " + S.rests.length + " 個";
+        S.rests.forEach(function (r) {
+          var li = document.createElement("li");
+          li.className = "rest-item";
+          var badge = document.createElement("div");
+          badge.className = "rest-badge num";
+          badge.textContent = r.n;
+          var body = document.createElement("div");
+          var title = document.createElement("div");
+          title.className = "r-title";
+          title.textContent = "休息點 " + r.n;
+          var rows = document.createElement("div");
+          rows.className = "r-rows num";
+          var row1 = document.createElement("span");
+          row1.innerHTML = "時間 <b></b> · 已健行 <b></b>";
+          row1.querySelectorAll("b")[0].textContent = fmtClock(r.t);
+          row1.querySelectorAll("b")[1].textContent = fmtHMS(r.elapsedMs);
+          var row2 = document.createElement("span");
+          row2.innerHTML = "累積距離 <b></b> · 海拔 <b></b>";
+          row2.querySelectorAll("b")[0].textContent = (r.dist / 1000).toFixed(2) + " km";
+          row2.querySelectorAll("b")[1].textContent = fmtInt(r.alt) + (r.alt == null ? "" : " m");
+          rows.appendChild(row1);
+          rows.appendChild(row2);
+          body.appendChild(title);
+          body.appendChild(rows);
+          li.appendChild(badge);
+          li.appendChild(body);
+          list.appendChild(li);
+        });
+      }
+
+      /* ---------------- charts ---------------- */
+      function scheduleCharts() {
+        if (S.chartTimer) return;
+        S.chartTimer = setTimeout(function () {
+          S.chartTimer = null;
+          drawRoute();
+          drawProfile();
+        }, 120);
+      }
+
+      function drawRoute() {
+        var wrap = $("routeWrap"), svg = $("routeSvg");
+        var W = wrap.clientWidth || 360;
+        var H = Math.round(Math.max(250, Math.min(400, W * 0.82)));
+        svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+        svg.setAttribute("width", W);
+        svg.setAttribute("height", H);
+        var pts = S.points;
+        $("routeEmpty").style.display = pts.length ? "none" : "flex";
+        if (!pts.length) { svg.innerHTML = ""; $("routeMeta").textContent = ""; return; }
+
+        var green = cssVar("--green"), amber = cssVar("--amber"),
+            ink = cssVar("--ink"), muted = cssVar("--muted"), line = cssVar("--line"),
+            surface = cssVar("--surface");
+
+        var minLat = 1e9, maxLat = -1e9, minLng = 1e9, maxLng = -1e9, i, p;
+        for (i = 0; i < pts.length; i++) {
+          p = pts[i];
+          if (p.lat < minLat) minLat = p.lat;
+          if (p.lat > maxLat) maxLat = p.lat;
+          if (p.lng < minLng) minLng = p.lng;
+          if (p.lng > maxLng) maxLng = p.lng;
+        }
+        S.rests.forEach(function (r) {
+          if (r.lat == null) return;
+          if (r.lat < minLat) minLat = r.lat;
+          if (r.lat > maxLat) maxLat = r.lat;
+          if (r.lng < minLng) minLng = r.lng;
+          if (r.lng > maxLng) maxLng = r.lng;
+        });
+        var midLat = (minLat + maxLat) / 2;
+        var kx = Math.max(0.15, Math.cos(midLat * Math.PI / 180));
+        var spanX = Math.max((maxLng - minLng) * kx, 1e-7);
+        var spanY = Math.max(maxLat - minLat, 1e-7);
+        var pad = 36;
+        var availW = W - pad * 2, availH = H - pad * 2;
+        var scale = Math.min(availW / spanX, availH / spanY);
+        var ox = pad + (availW - spanX * scale) / 2;
+        var oy = pad + (availH - spanY * scale) / 2;
+        function X(lng) { return ox + (lng - minLng) * kx * scale; }
+        function Y(lat) { return oy + (maxLat - lat) * scale; }
+
+        // meters per pixel for the scale bar
+        var metersPerDegLng = 111320 * kx;
+        var mPerPx = spanX > 0 ? ((maxLng - minLng) * metersPerDegLng) / (spanX * scale) : 0;
+
+        var disp = sample(pts, 800);
+        var dAttr = "";
+        disp.forEach(function (pt, idx) {
+          dAttr += (idx === 0 ? "M" : "L") + X(pt.lng).toFixed(1) + " " + Y(pt.lat).toFixed(1) + " ";
+        });
+
+        var out = "";
+        out += '<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (H - 1) + '" rx="10" fill="none" stroke="' + line + '"/>';
+        // faint grid
+        for (i = 1; i <= 3; i++) {
+          var gx = (W / 4 * i).toFixed(0), gy = (H / 4 * i).toFixed(0);
+          out += '<line x1="' + gx + '" y1="8" x2="' + gx + '" y2="' + (H - 8) + '" stroke="' + line + '" stroke-width="0.6" stroke-dasharray="2 4"/>';
+          out += '<line x1="8" y1="' + gy + '" x2="' + (W - 8) + '" y2="' + gy + '" stroke="' + line + '" stroke-width="0.6" stroke-dasharray="2 4"/>';
+        }
+        if (disp.length > 1) {
+          out += '<path d="' + dAttr + '" fill="none" stroke="' + green + '" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>';
+        }
+        // rest markers
+        S.rests.forEach(function (r) {
+          if (r.lat == null) return;
+          var cx = X(r.lng), cy = Y(r.lat);
+          out += '<circle cx="' + cx.toFixed(1) + '" cy="' + cy.toFixed(1) + '" r="10" fill="' + amber + '" stroke="' + surface + '" stroke-width="2"/>';
+          out += '<text x="' + cx.toFixed(1) + '" y="' + (cy + 3.5).toFixed(1) + '" font-size="10.5" font-weight="800" fill="#fff" stroke="none" text-anchor="middle">' + r.n + "</text>";
+        });
+        // start marker
+        var s0 = pts[0];
+        out += '<circle cx="' + X(s0.lng).toFixed(1) + '" cy="' + Y(s0.lat).toFixed(1) + '" r="6.5" fill="' + green + '" stroke="' + surface + '" stroke-width="2.5"/>';
+        out += '<text x="' + X(s0.lng).toFixed(1) + '" y="' + (Y(s0.lat) - 12).toFixed(1) + '" font-size="11.5" font-weight="700" fill="' + ink + '" text-anchor="middle">起點</text>';
+        // current position
+        var cur = S.currentFix ? { lat: S.currentFix.lat, lng: S.currentFix.lng } : pts[pts.length - 1];
+        var cxp = X(cur.lng), cyp = Y(cur.lat);
+        out += '<circle class="pulse-ring" cx="' + cxp.toFixed(1) + '" cy="' + cyp.toFixed(1) + '" r="9" fill="' + amber + '" opacity="0.5"/>';
+        out += '<circle cx="' + cxp.toFixed(1) + '" cy="' + cyp.toFixed(1) + '" r="6.5" fill="' + amber + '" stroke="' + surface + '" stroke-width="2.5"/>';
+        var anchor = cxp > W - 70 ? "end" : (cxp < 70 ? "start" : "middle");
+        out += '<text x="' + cxp.toFixed(1) + '" y="' + (cyp - 13).toFixed(1) + '" font-size="11.5" font-weight="700" fill="' + ink + '" text-anchor="' + anchor + '">目前位置</text>';
+        // north arrow
+        var nx = W - 26, ny = 30;
+        out += '<line x1="' + nx + '" y1="' + (ny + 12) + '" x2="' + nx + '" y2="' + (ny - 8) + '" stroke="' + muted + '" stroke-width="1.6"/>';
+        out += '<path d="M' + (nx - 4.5) + " " + (ny - 2) + " L" + nx + " " + (ny - 11) + " L" + (nx + 4.5) + " " + (ny - 2) + ' Z" fill="' + muted + '"/>';
+        out += '<text x="' + nx + '" y="' + (ny + 26) + '" font-size="11" font-weight="700" fill="' + muted + '" text-anchor="middle">北</text>';
+        // scale bar
+        if (mPerPx > 0 && isFinite(mPerPx)) {
+          var candidates = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+          var chosen = 0, chosenPx = 0;
+          for (i = 0; i < candidates.length; i++) {
+            var px = candidates[i] / mPerPx;
+            if (px >= 34 && px <= 120) { chosen = candidates[i]; chosenPx = px; break; }
+          }
+          if (chosen) {
+            var sx = 14, sy = H - 16;
+            out += '<line x1="' + sx + '" y1="' + sy + '" x2="' + (sx + chosenPx) + '" y2="' + sy + '" stroke="' + ink + '" stroke-width="2.5"/>';
+            out += '<line x1="' + sx + '" y1="' + (sy - 4) + '" x2="' + sx + '" y2="' + (sy + 1) + '" stroke="' + ink + '" stroke-width="2"/>';
+            out += '<line x1="' + (sx + chosenPx) + '" y1="' + (sy - 4) + '" x2="' + (sx + chosenPx) + '" y2="' + (sy + 1) + '" stroke="' + ink + '" stroke-width="2"/>';
+            var lbl = chosen >= 1000 ? (chosen / 1000) + " km" : chosen + " m";
+            out += '<text x="' + (sx + chosenPx / 2) + '" y="' + (sy - 7) + '" font-size="11" fill="' + muted + '" text-anchor="middle">' + lbl + "</text>";
+          }
+        }
+        svg.innerHTML = out;
+        $("routeMeta").textContent = "全程 " + (S.totalDist / 1000).toFixed(2) + " km · 自動縮放符合整條路線";
+      }
+
+      function drawProfile() {
+        var wrap = $("profileWrap"), svg = $("profileSvg");
+        var W = wrap.clientWidth || 360;
+        var H = 252;
+        svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+        svg.setAttribute("width", W);
+        svg.setAttribute("height", H);
+        var altPts = S.points.filter(function (p) { return p.alt != null; });
+        var hasPts = S.points.length > 0;
+        $("profileEmpty").style.display = altPts.length ? "none" : "flex";
+        if (!altPts.length) {
+          svg.innerHTML = "";
+          if (hasPts) $("profileEmpty").innerHTML = "此裝置的 GPS 沒有提供海拔資料<br />路線與距離仍會照常記錄";
+          return;
+        }
+        var green = cssVar("--green"), amber = cssVar("--amber"),
+            ink = cssVar("--ink"), muted = cssVar("--muted"), line = cssVar("--line"),
+            surface = cssVar("--surface");
+        var m = { l: 50, r: 16, t: 24, b: 32 };
+        var plotW = W - m.l - m.r, plotH = H - m.t - m.b;
+
+        var maxDist = Math.max(altPts[altPts.length - 1].dist, 100);
+        var minA = 1e18, maxA = -1e18, i;
+        var maxPt = null, minPt = null;
+        altPts.forEach(function (p) {
+          if (p.alt < minA) { minA = p.alt; minPt = p; }
+          if (p.alt > maxA) { maxA = p.alt; maxPt = p; }
+        });
+        var range = maxA - minA;
+        var padY = Math.max(range * 0.18, 6);
+        if (range < 20) padY = Math.max((20 - range) / 2, 6);
+        var y0 = minA - padY, y1 = maxA + padY;
+        function X(d) { return m.l + (d / maxDist) * plotW; }
+        function Y(a) { return m.t + (1 - (a - y0) / (y1 - y0)) * plotH; }
+
+        var out = "";
+        // y grid + labels
+        var yStep = niceStep((y1 - y0) / 4);
+        var yStart = Math.ceil(y0 / yStep) * yStep;
+        var v;
+        for (v = yStart; v <= y1; v += yStep) {
+          var yy = Y(v);
+          out += '<line x1="' + m.l + '" y1="' + yy.toFixed(1) + '" x2="' + (W - m.r) + '" y2="' + yy.toFixed(1) + '" stroke="' + line + '" stroke-width="0.8"/>';
+          out += '<text x="' + (m.l - 7) + '" y="' + (yy + 4).toFixed(1) + '" font-size="11" fill="' + muted + '" text-anchor="end">' + Math.round(v) + "</text>";
+        }
+        // x grid + labels
+        var xStep = niceStep(maxDist / 5);
+        for (v = 0; v <= maxDist + 1; v += xStep) {
+          var xx = X(v);
+          out += '<line x1="' + xx.toFixed(1) + '" y1="' + m.t + '" x2="' + xx.toFixed(1) + '" y2="' + (m.t + plotH) + '" stroke="' + line + '" stroke-width="0.6" stroke-dasharray="2 4"/>';
+          var xl = maxDist >= 1000 ? (v / 1000).toFixed(xStep >= 1000 ? 0 : 1) : String(Math.round(v));
+          out += '<text x="' + xx.toFixed(1) + '" y="' + (m.t + plotH + 20) + '" font-size="11" fill="' + muted + '" text-anchor="middle">' + xl + "</text>";
+        }
+        out += '<text x="' + m.l + '" y="13" font-size="11.5" font-weight="700" fill="' + muted + '">海拔（公尺）</text>';
+        out += '<text x="' + (W - m.r) + '" y="' + (H - 2) + '" font-size="11.5" font-weight="700" fill="' + muted + '" text-anchor="end">累積距離（' + (maxDist >= 1000 ? "公里" : "公尺") + "）</text>";
+        // axis lines
+        out += '<line x1="' + m.l + '" y1="' + m.t + '" x2="' + m.l + '" y2="' + (m.t + plotH) + '" stroke="' + muted + '" stroke-width="1"/>';
+        out += '<line x1="' + m.l + '" y1="' + (m.t + plotH) + '" x2="' + (W - m.r) + '" y2="' + (m.t + plotH) + '" stroke="' + muted + '" stroke-width="1"/>';
+
+        // rest vertical markers (under the profile line)
+        S.rests.forEach(function (r) {
+          if (r.dist > maxDist) return;
+          var rx = X(r.dist);
+          out += '<line x1="' + rx.toFixed(1) + '" y1="' + m.t + '" x2="' + rx.toFixed(1) + '" y2="' + (m.t + plotH) + '" stroke="' + amber + '" stroke-width="1.4" stroke-dasharray="5 4"/>';
+        });
+
+        // area + line
+        var disp = sample(altPts, 800);
+        var lineD = "", areaD = "";
+        disp.forEach(function (p, idx) {
+          var px = X(p.dist).toFixed(1), py = Y(p.alt).toFixed(1);
+          lineD += (idx === 0 ? "M" : "L") + px + " " + py + " ";
+        });
+        areaD = lineD + "L" + X(disp[disp.length - 1].dist).toFixed(1) + " " + (m.t + plotH) +
+                " L" + X(disp[0].dist).toFixed(1) + " " + (m.t + plotH) + " Z";
+        out += '<path d="' + areaD + '" fill="' + green + '" opacity="0.16"/>';
+        out += '<path d="' + lineD + '" fill="none" stroke="' + green + '" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
+
+        // rest badges on top
+        var lastBadgeX = -100, badgeRow = 0;
+        S.rests.forEach(function (r) {
+          if (r.dist > maxDist) return;
+          var rx = X(r.dist);
+          if (rx - lastBadgeX < 20) badgeRow = (badgeRow + 1) % 2; else badgeRow = 0;
+          lastBadgeX = rx;
+          var by = m.t + 10 + badgeRow * 20;
+          out += '<circle cx="' + rx.toFixed(1) + '" cy="' + by + '" r="8.5" fill="' + amber + '" stroke="' + surface + '" stroke-width="1.6"/>';
+          out += '<text x="' + rx.toFixed(1) + '" y="' + (by + 3.2) + '" font-size="9.5" font-weight="800" fill="#fff" stroke="none" text-anchor="middle">' + r.n + "</text>";
+        });
+
+        // max / min markers
+        function extreme(pt, label, isMax) {
+          var px = X(pt.dist), py = Y(pt.alt);
+          var anchor = px > W - 120 ? "end" : (px < 110 ? "start" : "middle");
+          var ly = isMax ? py - 10 : py + 18;
+          if (ly < 12) ly = py + 18;
+          if (ly > m.t + plotH - 2) ly = py - 10;
+          var s = "";
+          s += '<circle cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="4.4" fill="' + surface + '" stroke="' + green + '" stroke-width="2.4"/>';
+          s += '<text x="' + px.toFixed(1) + '" y="' + ly.toFixed(1) + '" font-size="12" font-weight="800" fill="' + ink + '" text-anchor="' + anchor + '">' +
+               label + " " + Math.round(pt.alt) + " 公尺</text>";
+          return s;
+        }
+        if (maxPt && minPt && maxPt !== minPt) {
+          out += extreme(maxPt, "最高", true);
+          out += extreme(minPt, "最低", false);
+        } else if (maxPt) {
+          out += extreme(maxPt, "海拔", true);
+        }
+        // current position
+        var lastP = altPts[altPts.length - 1];
+        out += '<circle cx="' + X(lastP.dist).toFixed(1) + '" cy="' + Y(lastP.alt).toFixed(1) + '" r="5.4" fill="' + amber + '" stroke="' + surface + '" stroke-width="2.2"/>';
+        out += '<text x="' + X(lastP.dist).toFixed(1) + '" y="' + (Y(lastP.alt) - 11).toFixed(1) + '" font-size="11.5" font-weight="700" fill="' + ink + '" text-anchor="end">目前 ' + Math.round(lastP.alt) + " 公尺</text>";
+
+        svg.innerHTML = out;
+        $("profileMeta").textContent = "最高 " + Math.round(maxA) + " m · 最低 " + Math.round(minA) +
+          " m · 爬升 " + Math.round(S.ascent) + " m";
+      }
+
+      /* ---------------- export ---------------- */
+      function dateStamp(t) {
+        var d = new Date(t);
+        return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+      }
+      function download(name, content, mime) {
+        var blob = new Blob([content], { type: mime });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      }
+      function buildGpx() {
+        var name = "健行記錄 " + dateStamp(S.startTs || Date.now());
+        var out = '<?xml version="1.0" encoding="UTF-8"?>\n';
+        out += '<gpx version="1.1" creator="健行記錄器" xmlns="http://www.topografix.com/GPX/1/1">\n';
+        out += "<metadata><time>" + new Date(S.startTs || Date.now()).toISOString() + "</time></metadata>\n";
+        S.rests.forEach(function (r) {
+          if (r.lat == null) return;
+          out += '<wpt lat="' + r.lat.toFixed(6) + '" lon="' + r.lng.toFixed(6) + '">';
+          if (r.alt != null) out += "<ele>" + Math.round(r.alt) + "</ele>";
+          out += "<time>" + new Date(r.t).toISOString() + "</time>";
+          out += "<name>" + escXml("休息點 " + r.n) + "</name>";
+          out += "<desc>" + escXml("時間 " + fmtClock(r.t) + " · 已健行 " + fmtHMS(r.elapsedMs) +
+                 " · 累積距離 " + (r.dist / 1000).toFixed(2) + " km") + "</desc></wpt>\n";
+        });
+        out += "<trk><name>" + escXml(name) + "</name><trkseg>\n";
+        S.points.forEach(function (p) {
+          out += '<trkpt lat="' + p.lat.toFixed(6) + '" lon="' + p.lng.toFixed(6) + '">';
+          if (p.alt != null) out += "<ele>" + Math.round(p.alt) + "</ele>";
+          out += "<time>" + new Date(p.t).toISOString() + "</time></trkpt>\n";
+        });
+        out += "</trkseg></trk>\n</gpx>\n";
+        return out;
+      }
+      function buildCsv() {
+        var rows = [];
+        S.points.forEach(function (p) {
+          rows.push({ t: p.t, lat: p.lat, lng: p.lng, alt: p.alt, dist: p.dist, type: "軌跡點" });
+        });
+        S.rests.forEach(function (r) {
+          if (r.lat == null) return;
+          rows.push({ t: r.t, lat: r.lat, lng: r.lng, alt: r.alt, dist: r.dist, type: "休息點 " + r.n });
+        });
+        rows.sort(function (a, b) { return a.t - b.t; });
+        var lines = ["時間,緯度,經度,海拔(公尺),累積距離(公尺),累積距離(公里),累積健行時間,類型"];
+        rows.forEach(function (r) {
+          var elapsed = "";
+          if (S.startTs) {
+            // elapsed excluding pauses is approximated for rest rows stored directly
+            elapsed = "";
+          }
+          lines.push([
+            new Date(r.t).toLocaleString("zh-TW", { hour12: false }),
+            r.lat.toFixed(6), r.lng.toFixed(6),
+            r.alt == null ? "" : Math.round(r.alt),
+            Math.round(r.dist), (r.dist / 1000).toFixed(3),
+            elapsed, r.type
+          ].join(","));
+        });
+        return "\ufeff" + lines.join("\r\n");
+      }
+
+      /* ---------------- simulation (clearly labelled test mode) ---------------- */
+      function startSim() {
+        hideError();
+        resetData();
+        renderRests();
+        S.sim = true;
+        S.status = "recording";
+        S.startTs = Date.now();
+        S.segmentStart = Date.now();
+        S.accumulatedMs = 0;
+        S.simState = { lat: 25.0330, lng: 121.5654, heading: 35, dist: 0 };
+        $("simBanner").hidden = false;
+        setStatusUI("recording");
+        setGpsText("模擬模式：假資料產生中");
+        simTick();
+        S.simTimer = setInterval(simTick, 1200);
+        updateStats(); updateSummary(); scheduleCharts();
+      }
+      function simTick() {
+        if (!S.sim || S.status !== "recording") return;
+        var st = S.simState;
+        st.heading += (Math.random() * 26 - 13);
+        var step = 6.5, rad = st.heading * Math.PI / 180;
+        st.lat += (step * Math.cos(rad)) / 111132;
+        st.lng += (step * Math.sin(rad)) / (111320 * Math.cos(st.lat * Math.PI / 180));
+        st.dist += step;
+        var alt = 150 + 105 * Math.sin(st.dist / 1500) + 48 * Math.sin(st.dist / 470 + 1.2) + (Math.random() * 2 - 1);
+        processFix({
+          coords: {
+            latitude: st.lat, longitude: st.lng, altitude: alt,
+            accuracy: 5, speed: 1.5, altitudeAccuracy: 3, heading: st.heading
+          },
+          timestamp: Date.now()
+        });
+        setGpsText("模擬模式：假資料產生中（精度 ±5 公尺）");
+      }
+      function stopSim() {
+        if (S.simTimer) { clearInterval(S.simTimer); S.simTimer = null; }
+        if (S.sim) {
+          S.sim = false;
+          $("simBanner").hidden = true;
+        }
+      }
+      function endSimAndReset() {
+        stopSim();
+        S.status = "idle";
+        resetData();
+        renderRests();
+        setStatusUI("idle");
+        setGpsText("按下「開始健行」後，頁面會請求使用定位");
+        updateCoordLine(); updateStats(); updateSummary(); scheduleCharts();
+      }
+
+      /* ---------------- wiring ---------------- */
+      $("btnStart").addEventListener("click", function () { S.sim = false; startRecording(); });
+      $("btnPause").addEventListener("click", pauseRecording);
+      $("btnResume").addEventListener("click", resumeRecording);
+      $("btnFinish").addEventListener("click", finishRecording);
+      $("btnPause2").addEventListener("click", function () {
+        if (S.status === "paused") resumeRecording(); else pauseRecording();
+      });
+      $("btnFinish2").addEventListener("click", finishRecording);
+      $("btnRest").addEventListener("click", addRest);
+      $("btnSim").addEventListener("click", startSim);
+      $("btnEndSim").addEventListener("click", endSimAndReset);
+      $("btnNew").addEventListener("click", function () {
+        var b = $("btnNew");
+        if (!b.dataset.armed) {
+          b.dataset.armed = "1";
+          b.textContent = "目前記錄將被清除，確定開始新的健行？再按一次";
+          setTimeout(function () {
+            if (b.dataset.armed) { b.dataset.armed = ""; b.textContent = "開始新的健行"; }
+          }, 3500);
+          return;
+        }
+        b.dataset.armed = "";
+        S.sim = false;
+        setStatusUI("idle");
+        startRecording();
+      });
+      $("btnGpx").addEventListener("click", function () {
+        download("hike-" + dateStamp(S.startTs || Date.now()) + ".gpx", buildGpx(), "application/gpx+xml");
+      });
+      $("btnCsv").addEventListener("click", function () {
+        download("hike-" + dateStamp(S.startTs || Date.now()) + ".csv", buildCsv(), "text/csv;charset=utf-8");
+      });
+      $("btnCopy").addEventListener("click", function () {
+        var text = summaryText();
+        function done() { toast("摘要已複製"); }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+        } else { fallbackCopy(text); done(); }
+      });
+      function fallbackCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } catch (e) {}
+        document.body.removeChild(ta);
+      }
+
+      document.addEventListener("visibilitychange", function () {
+        if (!document.hidden && S.status === "recording" && !S.sim) requestWakeLock();
+      });
+      var resizeTimer = null;
+      window.addEventListener("resize", function () {
+        if (resizeTimer) clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(scheduleCharts, 180);
+      });
+      if (window.matchMedia) {
+        var mq = window.matchMedia("(prefers-color-scheme: dark)");
+        if (mq.addEventListener) mq.addEventListener("change", scheduleCharts);
+        else if (mq.addListener) mq.addListener(scheduleCharts);
+      }
+
+      /* ---------------- clock loop ---------------- */
+      setInterval(function () {
+        $("elapsed").textContent = fmtHMS(elapsedMs());
+        var now = new Date();
+        $("clockNow").textContent = S.startTs ? ("目前時間 " + fmtClock(now.getTime())) : "";
+        if (S.status === "recording" || S.status === "paused") updateStats();
+      }, 500);
+
+      /* ---------------- init ---------------- */
+      setStatusUI("idle");
+      renderRests();
+      updateStats();
+      updateSummary();
+      scheduleCharts();
+    </script>
+  </body>
+</html>
